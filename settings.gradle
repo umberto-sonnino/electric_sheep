@@ -1,0 +1,3 @@
+include ':rive-runtime'
+include ':app'
+rootProject.name = "electric_sheep"
