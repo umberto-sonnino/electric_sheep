@@ -102,9 +102,10 @@ class ElectricSheep : View {
             }
             end -> {
                 isPlaying = false
-                val animation = end.animation
+                val endAnimation = end.animation
                 // Subtract small epsilon to avoid animation advancing to the first frame
-                val finalTime: Float = (animation.duration.toFloat() - 0.00001f) / animation.fps
+                val finalTime: Float =
+                    (endAnimation.duration.toFloat() - 0.00001f) / endAnimation.fps
                 end.time(finalTime)
                 end.advance(0f)
                 end.apply(artboard, 1f)
@@ -120,6 +121,9 @@ class ElectricSheep : View {
             Loop.ONESHOT, Loop.LOOP -> {
                 if (animation != vibrate)
                     completedAnimations.add(animation)
+            }
+            else -> {
+                return
             }
         }
     }
