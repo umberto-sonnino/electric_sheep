@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.view.View
 import app.rive.runtime.kotlin.*
+import kotlin.math.min
 
 
 class ElectricSheep : View {
@@ -12,11 +13,15 @@ class ElectricSheep : View {
     private val renderer: Renderer
     private val artboard: Artboard
     private val animationInstances = ArrayList<LinearAnimationInstance>()
+    private val completedAnimations = ArrayList<LinearAnimationInstance>()
 
     private val start: LinearAnimationInstance
     private val end: LinearAnimationInstance
     private val vibrate: LinearAnimationInstance
     private val move: LinearAnimationInstance
+
+    private val mixSeconds = 0.1f
+    private var mix = 1.0f
 
     private lateinit var targetBounds: AABB
 
@@ -60,58 +65,67 @@ class ElectricSheep : View {
         renderer.canvas = canvas
         renderer.align(Fit.CONTAIN, Alignment.CENTER, targetBounds, artboard.bounds())
 
-        advanceAnimations(elapsed)
-
         canvas.save()
-        artboard.advance(elapsed)
-        artboard.draw(renderer, canvas)
-        canvas.restore()
-
         if (isPlaying) {
+            advanceAnimations(elapsed)
+            artboard.advance(elapsed)
             // Paint again.
             invalidate()
         }
+        artboard.draw(renderer, canvas)
+        canvas.restore()
     }
 
     fun advanceAnimations(elapsed: Float) {
         if (!isPlaying) return
+
+        val mixValue = min(1.0f, mix / mixSeconds)
 
         animationInstances.forEach {
             val result = it.advance(elapsed)
             onResult(result, it)
             it.apply(artboard, 1f)
         }
+
+        completedAnimations.forEach {
+            animationInstances.remove(it)
+            onCompleted(it)
+        }
+        completedAnimations.clear()
+    }
+
+    fun onCompleted(animation: LinearAnimationInstance) {
+        when (animation) {
+            start -> {
+                animationInstances.add(move)
+                animationInstances.add(vibrate)
+            }
+            end -> {
+                isPlaying = false
+                val animation = end.animation
+                // Subtract small epsilon to avoid animation advancing to the first frame
+                val finalTime: Float = (animation.duration.toFloat() - 0.00001f) / animation.fps
+                end.time(finalTime)
+                end.advance(0f)
+                end.apply(artboard, 1f)
+            }
+            move -> {
+                animationInstances.add(end)
+            }
+        }
     }
 
     fun onResult(loop: Loop, animation: LinearAnimationInstance) {
         when (loop) {
-            Loop.NONE -> {
-                return
-            }
-            Loop.ONESHOT -> {
-                if (animation == start) {
-                    animationInstances.clear()
-                    animationInstances.add(vibrate)
-                    animationInstances.add(move)
-                }
-            }
-
-            Loop.LOOP -> {
-                if (animation == move) {
-                    animationInstances.clear()
-                    animationInstances.add(end)
-                } else if (animation == end) {
-//                    animationInstances.clear()
-                    isPlaying = false
-                }
-            }
-
-            Loop.PINGPONG -> {
+            Loop.ONESHOT, Loop.LOOP -> {
+                if (animation != vibrate)
+                    completedAnimations.add(animation)
             }
         }
     }
 
     fun restart() {
+        isPlaying = true
         animationInstances.clear()
         lastTime = System.currentTimeMillis()
         animationInstances.add(start)

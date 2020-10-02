@@ -15,16 +15,16 @@ class MainActivity : AppCompatActivity() {
         layout.orientation = LinearLayout.VERTICAL
         layout.weightSum = 2.0f
 
-        val bytes =getResources().openRawResource(R.raw.android_sheep).readBytes()
-
-        var simpleView = ElectricSheep(bytes,this)
+        val android_sheep = resources.openRawResource(R.raw.android_sheep)
+        val bytes = android_sheep.readBytes()
+        val simpleView = ElectricSheep(bytes, this)
 
         val btnTag = Button(this)
         val layoutParams =
-                LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT
-                )
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
         btnTag.setLayoutParams(layoutParams)
         btnTag.setText("Restart")
         btnTag.setOnClickListener {
