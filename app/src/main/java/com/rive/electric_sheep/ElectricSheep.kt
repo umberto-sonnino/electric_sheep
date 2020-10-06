@@ -20,8 +20,7 @@ class ElectricSheep : View {
     private val vibrate: LinearAnimationInstance
     private val move: LinearAnimationInstance
 
-    private val mixSeconds = 0.1f
-    private var mix = 1.0f
+    private var moveMix = 1.0f
 
     private lateinit var targetBounds: AABB
 
@@ -43,6 +42,7 @@ class ElectricSheep : View {
         renderer = Renderer()
         start = LinearAnimationInstance(artboard.animation("start"))
         end = LinearAnimationInstance(artboard.animation("end"))
+        end.animation.loop = Loop.ONESHOT
         vibrate = LinearAnimationInstance(artboard.animation("sheep_vibration"))
         move = LinearAnimationInstance(artboard.animation("sheep_movement"))
     }
@@ -59,14 +59,14 @@ class ElectricSheep : View {
     }
 
     fun redraw(canvas: Canvas) {
-        val currentTime = System.currentTimeMillis()
-        val elapsed = (currentTime - lastTime) / 1000f
-        lastTime = currentTime
         renderer.canvas = canvas
         renderer.align(Fit.CONTAIN, Alignment.CENTER, targetBounds, artboard.bounds())
 
         canvas.save()
         if (isPlaying) {
+            val currentTime = System.currentTimeMillis()
+            val elapsed = (currentTime - lastTime) / 1000f
+            lastTime = currentTime
             advanceAnimations(elapsed)
             artboard.advance(elapsed)
             // Paint again.
@@ -77,14 +77,13 @@ class ElectricSheep : View {
     }
 
     fun advanceAnimations(elapsed: Float) {
-        if (!isPlaying) return
 
-        val mixValue = min(1.0f, mix / mixSeconds)
+        moveMix = min(1f, moveMix + elapsed)
 
         animationInstances.forEach {
             val result = it.advance(elapsed)
             onResult(result, it)
-            it.apply(artboard, 1f)
+            it.apply(artboard, moveMix)
         }
 
         completedAnimations.forEach {
@@ -99,16 +98,12 @@ class ElectricSheep : View {
             start -> {
                 animationInstances.add(move)
                 animationInstances.add(vibrate)
+                moveMix = 0f
             }
             end -> {
-                isPlaying = false
-                val endAnimation = end.animation
-                // Subtract small epsilon to avoid animation advancing to the first frame
-                val finalTime: Float =
-                    (endAnimation.duration.toFloat() - 0.00001f) / endAnimation.fps
-                end.time(finalTime)
-                end.advance(0f)
-                end.apply(artboard, 1f)
+//                isPlaying = false
+                completedAnimations.add(end)
+                completedAnimations.add(vibrate)
             }
             move -> {
                 animationInstances.add(end)
@@ -116,11 +111,13 @@ class ElectricSheep : View {
         }
     }
 
-    fun onResult(loop: Loop, animation: LinearAnimationInstance) {
+    fun onResult(loop: Loop?, animation: LinearAnimationInstance) {
         when (loop) {
             Loop.ONESHOT, Loop.LOOP -> {
-                if (animation != vibrate)
+                if (animation != vibrate) {
                     completedAnimations.add(animation)
+                }
+                if (animation == move) completedAnimations.add(vibrate)
             }
             else -> {
                 return
@@ -131,6 +128,7 @@ class ElectricSheep : View {
     fun restart() {
         isPlaying = true
         animationInstances.clear()
+        completedAnimations.clear()
         lastTime = System.currentTimeMillis()
         animationInstances.add(start)
     }

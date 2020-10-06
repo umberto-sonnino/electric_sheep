@@ -1,5 +1,6 @@
 package com.rive.electric_sheep
 
+import android.graphics.Color
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.Button
@@ -31,8 +32,9 @@ class MainActivity : AppCompatActivity() {
             simpleView.restart()
         }
 
-        layout.addView(btnTag)
+//        layout.addView(btnTag)
         layout.addView(simpleView);
+        layout.setBackgroundColor(Color.parseColor("#3497DB"))
 
         setContentView(layout);
     }
