@@ -8,6 +8,7 @@ import kotlin.math.min
 
 
 class ElectricSheep : View {
+    private var onFinishedDelegate: LoadFinishedDelegate?
     private var lastTime: Long = 0
 
     private val renderer: Renderer
@@ -24,7 +25,7 @@ class ElectricSheep : View {
 
     private lateinit var targetBounds: AABB
 
-    var isPlaying = true
+    private var isPlaying = true
         get() = field
         set(value) {
             if (value != field) {
@@ -37,9 +38,11 @@ class ElectricSheep : View {
         }
 
     constructor(fileBytes: ByteArray, context: Context) : super(context) {
+        onFinishedDelegate = if (context is LoadFinishedDelegate) context else null
         val file = File(fileBytes)
         artboard = file.artboard()
         renderer = Renderer()
+
         start = LinearAnimationInstance(artboard.animation("start"))
         end = LinearAnimationInstance(artboard.animation("end"))
         end.animation.loop = Loop.ONESHOT
@@ -58,7 +61,7 @@ class ElectricSheep : View {
         redraw(canvas)
     }
 
-    fun redraw(canvas: Canvas) {
+    private fun redraw(canvas: Canvas) {
         renderer.canvas = canvas
         renderer.align(Fit.CONTAIN, Alignment.CENTER, targetBounds, artboard.bounds())
 
@@ -76,9 +79,9 @@ class ElectricSheep : View {
         canvas.restore()
     }
 
-    fun advanceAnimations(elapsed: Float) {
+    private fun advanceAnimations(elapsed: Float) {
 
-        moveMix = min(1f, moveMix + elapsed)
+        moveMix = min(1f, moveMix + elapsed/2)
 
         animationInstances.forEach {
             val result = it.advance(elapsed)
@@ -93,7 +96,7 @@ class ElectricSheep : View {
         completedAnimations.clear()
     }
 
-    fun onCompleted(animation: LinearAnimationInstance) {
+    private fun onCompleted(animation: LinearAnimationInstance) {
         when (animation) {
             start -> {
                 animationInstances.add(move)
@@ -101,36 +104,25 @@ class ElectricSheep : View {
                 moveMix = 0f
             }
             end -> {
-//                isPlaying = false
+                isPlaying = false
                 completedAnimations.add(end)
                 completedAnimations.add(vibrate)
-            }
-            move -> {
-                animationInstances.add(end)
+                onFinishedDelegate?.onLoadingFinished()
             }
         }
     }
 
-    fun onResult(loop: Loop?, animation: LinearAnimationInstance) {
+    private fun onResult(loop: Loop?, animation: LinearAnimationInstance) {
         when (loop) {
             Loop.ONESHOT, Loop.LOOP -> {
-                if (animation != vibrate) {
+                if (animation == start || animation == end) {
                     completedAnimations.add(animation)
                 }
-                if (animation == move) completedAnimations.add(vibrate)
             }
             else -> {
                 return
             }
         }
-    }
-
-    fun restart() {
-        isPlaying = true
-        animationInstances.clear()
-        completedAnimations.clear()
-        lastTime = System.currentTimeMillis()
-        animationInstances.add(start)
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -143,5 +135,11 @@ class ElectricSheep : View {
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         renderer.cleanup()
+    }
+
+    fun onComplete() {
+        completedAnimations.add(move)
+        completedAnimations.add(vibrate)
+        animationInstances.add(end)
     }
 }
