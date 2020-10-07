@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:background="@color/cardview_shadow_start_color"
+    android:layout_width="match_parent"
+    android:layout_height="140dp"
+    app:cardCornerRadius="20dp"
+    app:cardElevation="0dp"
+    app:cardBackgroundColor="@color/light_grey"
+    android:divider="@android:color/transparent"
+    android:dividerHeight="50dp"
+    >
+
+</com.google.android.material.card.MaterialCardView>
