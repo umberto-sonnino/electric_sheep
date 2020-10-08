@@ -1,7 +1,5 @@
 package com.rive.electric_sheep
 
-import android.animation.ArgbEvaluator
-import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
@@ -15,89 +13,54 @@ import android.widget.LinearLayout
 import android.widget.ListView
 import android.widget.Switch
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 
-interface LoadFinishedDelegate {
+// This is a delegate class that can relay events in the ElectricSheep class.
+interface LoadDelegate {
     fun onLoadingFinished()
+    fun onLoadingStarted()
 }
 
-class LoadActivity : AppCompatActivity(), LoadFinishedDelegate {
+class LoadActivity : AppCompatActivity(), LoadDelegate {
     private lateinit var switch: Switch
     private lateinit var animationView: ElectricSheep
     private lateinit var listView: ListView
     private lateinit var layout: LinearLayout
-
-    val bgColor = Color.parseColor("#3497DB")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         layout = LinearLayout(this);
         layout.orientation = LinearLayout.VERTICAL
+        layout.setBackgroundColor(ContextCompat.getColor(this, R.color.background))
+        val padding = 50
+        layout.setPadding(padding, padding * 2, padding, 0)
 
-        val pad = 50
-        layout.setPadding(pad, pad * 2, pad, 0)
+        setupAnimation()
+        setupSwitch()
+        setupList()
 
-        // Add the Sheep Animation
-        val androidSheep = resources.openRawResource(R.raw.android_sheep)
-        val bytes = androidSheep.readBytes()
-        animationView = ElectricSheep(bytes, this)
-        animationView.layoutParams = LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            1200
-        )
-
-        // Setup Switch that toggles animation visibility.
-        switch = Switch(this)
-        val switchParams = LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.WRAP_CONTENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        )
-        switchParams.gravity = Gravity.CENTER_HORIZONTAL
-        switchParams.setMargins(30, 100, 30, 30)
-        switch.layoutParams = switchParams
-
-        // Setup ListView that'll become visible at the end of the animation.
-        listView = ListView(this)
-        val cards = Array<String>(10) { "$it" }
-        listView.adapter = CardAdapter(this, cards)
-        val divider = ColorDrawable(Color.TRANSPARENT)
-        listView.divider = divider
-        listView.dividerHeight = 50
-        listView.visibility = View.GONE
-
-        // Add all the elements to the screen.
         layout.addView(animationView);
-        layout.addView(listView)
         layout.addView(switch)
-        layout.setBackgroundColor(bgColor)
+        layout.addView(listView)
         setContentView(layout)
+    }
 
+    // Gets triggered in the ElectricSheep class, when the 'start' animation has completed.
+    override fun onLoadingStarted() {
+        switch.isEnabled = true
         switch.setOnCheckedChangeListener { _, isChecked ->
             toggleFinished(isChecked)
         }
     }
 
-    fun toggleFinished(isChecked: Boolean) {
-        if (isChecked) {
-            animationView.onComplete()
-        }
-    }
-
+    // Gets triggered in the ElectricSheep class, when the 'end' animation has completed.
     override fun onLoadingFinished() {
-        hideAnimation()
-        showList()
-    }
-
-    private fun hideAnimation() {
+        // Hide animation & switch
         switch.visibility = View.GONE
         animationView.visibility = View.GONE
 
-        val colorAnimation = ValueAnimator.ofObject(ArgbEvaluator(), bgColor, R.color.purple)
-        colorAnimation.duration = 250
-        colorAnimation.addUpdateListener {
-            layout.setBackgroundColor(it.getAnimatedValue() as Int)
-        }
-        colorAnimation.start()
+        showList()
     }
 
     private fun showList() {
@@ -106,13 +69,62 @@ class LoadActivity : AppCompatActivity(), LoadFinishedDelegate {
             visibility = View.VISIBLE
             animate()
                 .alpha(1f)
-                .setDuration(1500)
+                .setDuration(1000)
                 .setListener(null)
         }
     }
 
+    private fun toggleFinished(isChecked: Boolean) {
+        if (isChecked) {
+            animationView.onComplete()
+        }
+    }
+
+    private fun setupSwitch() {
+        // Setup the Switch that toggles the completed state of the animation.
+        // Initially this Switch is disabled, and becomes enabled when the animation has
+        //  completed its brief starting animation.
+        switch = Switch(this)
+        switch.isEnabled = false
+        val switchParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        )
+        switchParams.gravity = Gravity.CENTER_HORIZONTAL
+        switchParams.setMargins(30, 100, 30, 30)
+        switch.layoutParams = switchParams
+    }
+
+    private fun setupAnimation() {
+        // Add the Sheep Animation
+        // This animation has three states:
+        // - Start
+        // - Loading
+        // - End
+        val androidSheep = resources.openRawResource(R.raw.android_sheep)
+        val bytes = androidSheep.readBytes()
+        animationView = ElectricSheep(bytes, this)
+        animationView.layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            1200
+        )
+    }
+
+    private fun setupList() {
+        // Setup a list of elements that'll become visible at the end of the animation.
+        // It'll be invisible at first, but its visibility will change once
+        //  onLoadingFinished() is triggered.
+        listView = ListView(this)
+        val cards = Array<String>(10) { "$it" }
+        listView.adapter = CardAdapter(this, cards)
+        val divider = ColorDrawable(Color.TRANSPARENT)
+        listView.divider = divider
+        listView.dividerHeight = 50
+        listView.visibility = View.GONE
+    }
 }
 
+// ListView adapter for showing cards.
 class CardAdapter(
     private val context: Context,
     private val dataSource: Array<String>

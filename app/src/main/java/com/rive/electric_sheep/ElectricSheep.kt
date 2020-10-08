@@ -8,12 +8,12 @@ import kotlin.math.min
 
 
 class ElectricSheep : View {
-    private var onFinishedDelegate: LoadFinishedDelegate?
+    private var loadDelegate: LoadDelegate?
     private var lastTime: Long = 0
 
     private val renderer: Renderer
     private val artboard: Artboard
-    private val animationInstances = ArrayList<LinearAnimationInstance>()
+    private val runningAnimations = ArrayList<LinearAnimationInstance>()
     private val completedAnimations = ArrayList<LinearAnimationInstance>()
 
     private val start: LinearAnimationInstance
@@ -37,8 +37,11 @@ class ElectricSheep : View {
             }
         }
 
+    val isLoading: Boolean
+        get() = !runningAnimations.contains(start)
+
     constructor(fileBytes: ByteArray, context: Context) : super(context) {
-        onFinishedDelegate = if (context is LoadFinishedDelegate) context else null
+        loadDelegate = if (context is LoadDelegate) context else null
         val file = File(fileBytes)
         artboard = file.artboard()
         renderer = Renderer()
@@ -53,7 +56,7 @@ class ElectricSheep : View {
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         lastTime = System.currentTimeMillis()
-        animationInstances.add(start)
+        runningAnimations.add(start)
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -83,14 +86,14 @@ class ElectricSheep : View {
 
         moveMix = min(1f, moveMix + elapsed/2)
 
-        animationInstances.forEach {
+        runningAnimations.forEach {
             val result = it.advance(elapsed)
             onResult(result, it)
             it.apply(artboard, moveMix)
         }
 
         completedAnimations.forEach {
-            animationInstances.remove(it)
+            runningAnimations.remove(it)
             onCompleted(it)
         }
         completedAnimations.clear()
@@ -99,15 +102,16 @@ class ElectricSheep : View {
     private fun onCompleted(animation: LinearAnimationInstance) {
         when (animation) {
             start -> {
-                animationInstances.add(move)
-                animationInstances.add(vibrate)
+                runningAnimations.add(move)
+                runningAnimations.add(vibrate)
                 moveMix = 0f
+                loadDelegate?.onLoadingStarted()
             }
             end -> {
                 isPlaying = false
                 completedAnimations.add(end)
                 completedAnimations.add(vibrate)
-                onFinishedDelegate?.onLoadingFinished()
+                loadDelegate?.onLoadingFinished()
             }
         }
     }
@@ -140,6 +144,6 @@ class ElectricSheep : View {
     fun onComplete() {
         completedAnimations.add(move)
         completedAnimations.add(vibrate)
-        animationInstances.add(end)
+        runningAnimations.add(end)
     }
 }

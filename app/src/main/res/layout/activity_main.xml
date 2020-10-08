@@ -12,7 +12,7 @@
         android:layout_height="match_parent"
         android:onClick="loadPage"
         android:text="@string/btn_dream"
-        android:background="@color/purple"
+        android:background="@color/background"
         android:textColor="@color/white"
         android:elevation="0px"
         style="?android:attr/borderlessButtonStyle"
