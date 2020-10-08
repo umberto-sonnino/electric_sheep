@@ -75,7 +75,7 @@ class ElectricSheep : View {
             // Paint again.
             invalidate()
         }
-        artboard.draw(renderer, canvas)
+        artboard.draw(renderer)
         canvas.restore()
     }
 
